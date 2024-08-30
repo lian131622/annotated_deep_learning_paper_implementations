@@ -23,7 +23,6 @@ import torch
 import torch.utils.data
 import torchvision
 from PIL import Image
-
 from labml import lab, tracker, experiment, monit
 from labml.configs import BaseConfigs, option
 from labml_helpers.device import DeviceConfigs
@@ -206,7 +205,7 @@ class MNISTDataset(torchvision.datasets.MNIST):
 
     def __init__(self, image_size):
         transform = torchvision.transforms.Compose([
-            torchvision.transforms.Resize(image_size),
+            torchvision.transforms.Resize((image_size, image_size)),
             torchvision.transforms.ToTensor(),
         ])
 
@@ -224,18 +223,54 @@ def mnist_dataset(c: Configs):
     return MNISTDataset(c.image_size)
 
 
+class THz1800(torch.utils.data.Dataset):
+    def __init__(self, image_size: int):
+        super().__init__()
+
+        # CelebA images folder
+        folder = lab.get_data_path() / 'THZ1800'
+        # List of files
+        self._files = [p for p in folder.glob(f'train/target_sub/*.png')]
+
+        # Transformations to resize the image and convert to tensor
+        self._transform = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((image_size, image_size)),
+            torchvision.transforms.ToTensor(),
+        ])
+
+    def __len__(self):
+        """
+        Size of the dataset
+        """
+        return len(self._files)
+
+    def __getitem__(self, index: int):
+        """
+        Get an image
+        """
+        img = Image.open(self._files[index])
+        return self._transform(img)
+
+
+@option(Configs.dataset, 'THZ1800')
+def thz1800_dataset(c: Configs):
+    return THz1800(c.image_size)
+
+
 def main():
     # Create experiment
-    experiment.create(name='diffuse2', writers={'screen', 'labml'})
+    experiment.create(name='THz', writers={'screen', 'labml'})
 
     # Create configurations
     configs = Configs()
 
     # Set configurations. You can override the defaults by passing the values in the dictionary.
     experiment.configs(configs, {
-        'dataset': 'MNIST',  # 'MNIST'
-        'image_channels': 1,  # 1,
-        'epochs': 1,  # 5,
+        'dataset': 'THZ1800',  # 'MNIST'
+        'image_channels': 3,  # 1,
+        'epochs': 500,  # 5,
+        'image_size': 120,
+        'batch_size': 20
     })
 
     # Initialize
